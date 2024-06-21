@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/zrma/proglog/pkg/pb"
 )
 
 func NewHTTPServer(addr string) *http.Server {
@@ -77,7 +79,7 @@ func (s *httpServer) handleConsume(w http.ResponseWriter, r *http.Request) {
 }
 
 type ProduceRequest struct {
-	Record Record `json:"record"`
+	Record *pb.Record `json:"record"`
 }
 
 type ProduceResponse struct {
@@ -89,5 +91,5 @@ type ConsumeRequest struct {
 }
 
 type ConsumeResponse struct {
-	Record Record `json:"record"`
+	Record *pb.Record `json:"record"`
 }
