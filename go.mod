@@ -4,6 +4,7 @@ go 1.22.4
 
 require (
 	github.com/bufbuild/buf v1.33.0
+	github.com/edsrzf/mmap-go v1.1.0
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/multierr v1.11.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.4.0
