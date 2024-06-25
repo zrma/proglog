@@ -1,7 +1,6 @@
 package log
 
 import (
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -109,13 +108,11 @@ func (l *Log) Read(off uint64) (*pb.Record, error) {
 	}
 
 	if s == nil || s.nextOffset <= off {
-		return nil, ErrOffsetOutOfRange
+		return nil, pb.ErrOffsetOutOfRange{Offset: off}
 	}
 
 	return s.Read(off)
 }
-
-var ErrOffsetOutOfRange = errors.New("offset out of range")
 
 func (l *Log) Close() error {
 	l.mu.Lock()
