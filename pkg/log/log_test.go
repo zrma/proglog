@@ -1,6 +1,7 @@
 package log
 
 import (
+	"errors"
 	"io"
 	"os"
 	"testing"
@@ -32,8 +33,12 @@ func TestLog(t *testing.T) {
 		f := newFixture(t)
 
 		got, err := f.log.Read(1)
-		require.Equal(t, ErrOffsetOutOfRange, err)
+		require.Error(t, err)
 		require.Nil(t, got)
+
+		var err0 pb.ErrOffsetOutOfRange
+		require.True(t, errors.As(err, &err0))
+		require.Equal(t, uint64(1), err0.Offset)
 	})
 
 	t.Run("OK/InitWithExisting", func(t *testing.T) {
@@ -126,7 +131,10 @@ func TestLog(t *testing.T) {
 
 		_, err = f.log.Read(0)
 		require.Error(t, err)
-		require.Equal(t, ErrOffsetOutOfRange, err)
+
+		var err0 pb.ErrOffsetOutOfRange
+		require.True(t, errors.As(err, &err0))
+		require.Equal(t, uint64(0), err0.Offset)
 
 		lowest, err = f.log.LowestOffset()
 		require.NoError(t, err)

@@ -7,6 +7,8 @@ require (
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/multierr v1.11.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117
+	google.golang.org/grpc v1.64.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.4.0
 	google.golang.org/protobuf v1.34.2
 )
@@ -84,6 +86,5 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
