@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/zrma/proglog/pkg/pb"
+	"github.com/zrma/proglog/internal/pb"
 )
 
 func TestSegment(t *testing.T) {

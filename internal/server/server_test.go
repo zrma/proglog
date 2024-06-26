@@ -13,8 +13,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	"github.com/zrma/proglog/pkg/log"
-	"github.com/zrma/proglog/pkg/pb"
+	"github.com/zrma/proglog/internal/log"
+	"github.com/zrma/proglog/internal/pb"
 )
 
 func TestGRPCServer_ProduceAndConsume(t *testing.T) {

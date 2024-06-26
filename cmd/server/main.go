@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/zrma/proglog/pkg/server"
+	"github.com/zrma/proglog/internal/server"
 )
 
 func main() {

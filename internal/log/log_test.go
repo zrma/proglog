@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/zrma/proglog/pkg/pb"
+	"github.com/zrma/proglog/internal/pb"
 )
 
 func TestLog(t *testing.T) {

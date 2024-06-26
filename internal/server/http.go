@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/zrma/proglog/pkg/pb"
+	"github.com/zrma/proglog/internal/pb"
 )
 
 func NewHTTPServer(addr string) *http.Server {

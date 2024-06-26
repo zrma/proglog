@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/zrma/proglog/pkg/pb"
+	"github.com/zrma/proglog/internal/pb"
 )
 
 type Log struct {

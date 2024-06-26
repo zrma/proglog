@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/zrma/proglog/pkg/pb"
+	"github.com/zrma/proglog/internal/pb"
 )
 
 type segment struct {
