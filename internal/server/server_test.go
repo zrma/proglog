@@ -10,9 +10,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
+	"github.com/zrma/proglog/internal/config"
 	"github.com/zrma/proglog/internal/log"
 	"github.com/zrma/proglog/internal/pb"
 )
@@ -104,10 +105,19 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 
-	l, err := net.Listen("tcp", ":0")
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	clientOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	clientTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
+		CertFile: config.ClientCertFile,
+		KeyFile:  config.ClientKeyFile,
+		CAFile:   config.CAFile,
+	})
+	require.NoError(t, err)
+
+	clientOpts := []grpc.DialOption{
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+	}
 	clientConn, err := grpc.NewClient(l.Addr().String(), clientOpts...)
 	require.NoError(t, err)
 
@@ -119,7 +129,19 @@ func newFixture(t *testing.T) *fixture {
 
 	cfg := &Config{CommitLog: diskLog}
 
-	svr, err := NewGRPCServer(cfg)
+	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
+		CertFile:      config.ServerCertFile,
+		KeyFile:       config.ServerKeyFile,
+		CAFile:        config.CAFile,
+		ServerAddress: l.Addr().String(),
+		Server:        true,
+	})
+	require.NoError(t, err)
+
+	serverOpts := []grpc.ServerOption{
+		grpc.Creds(credentials.NewTLS(serverTLSConfig)),
+	}
+	svr, err := NewGRPCServer(cfg, serverOpts...)
 	require.NoError(t, err)
 
 	go func() {

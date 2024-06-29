@@ -13,3 +13,10 @@ cfssl gencert \
   -config=tools/certs/ca-config.json \
   -profile=server \
   tools/certs/server-csr.json | cfssljson -bare $TARGET_DIR/server
+
+cfssl gencert \
+  -ca=$TARGET_DIR/ca.pem \
+  -ca-key=$TARGET_DIR/ca-key.pem \
+  -config=tools/certs/ca-config.json \
+  -profile=client \
+  tools/certs/client-csr.json | cfssljson -bare $TARGET_DIR/client

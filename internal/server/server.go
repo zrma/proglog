@@ -13,12 +13,14 @@ type CommitLog interface {
 	Read(uint64) (*pb.Record, error)
 }
 
-func NewGRPCServer(config *Config) (*grpc.Server, error) {
-	svc := grpc.NewServer()
+func NewGRPCServer(config *Config, opts ...grpc.ServerOption) (*grpc.Server, error) {
+	svc := grpc.NewServer(opts...)
+	
 	svr, err := newGrpcServer(config)
 	if err != nil {
 		return nil, err
 	}
+
 	pb.RegisterLogServer(svc, svr)
 	return svc, nil
 }
