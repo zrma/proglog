@@ -6,11 +6,15 @@ import (
 )
 
 var (
-	CAFile         string
-	ServerCertFile string
-	ServerKeyFile  string
-	ClientCertFile string
-	ClientKeyFile  string
+	CAFile               string
+	ServerCertFile       string
+	ServerKeyFile        string
+	NobodyClientCertFile string
+	NobodyClientKeyFile  string
+	RootClientCertFile   string
+	RootClientKeyFile    string
+	ACLModelFile         string
+	ACLPolicyFile        string
 )
 
 func init() {
@@ -22,8 +26,12 @@ func init() {
 	CAFile = certPath(projectRoot, "ca.pem")
 	ServerCertFile = certPath(projectRoot, "server.pem")
 	ServerKeyFile = certPath(projectRoot, "server-key.pem")
-	ClientCertFile = certPath(projectRoot, "client.pem")
-	ClientKeyFile = certPath(projectRoot, "client-key.pem")
+	NobodyClientCertFile = certPath(projectRoot, "nobody-client.pem")
+	NobodyClientKeyFile = certPath(projectRoot, "nobody-client-key.pem")
+	RootClientCertFile = certPath(projectRoot, "root-client.pem")
+	RootClientKeyFile = certPath(projectRoot, "root-client-key.pem")
+	ACLModelFile = certPath(projectRoot, "acl-model.conf")
+	ACLPolicyFile = certPath(projectRoot, "acl-policy.csv")
 }
 
 func certPath(projectRoot, fileName string) string {

@@ -19,4 +19,16 @@ cfssl gencert \
   -ca-key=$TARGET_DIR/ca-key.pem \
   -config=tools/certs/ca-config.json \
   -profile=client \
-  tools/certs/client-csr.json | cfssljson -bare $TARGET_DIR/client
+  -cn="root" \
+  tools/certs/client-csr.json | cfssljson -bare $TARGET_DIR/root-client
+
+cfssl gencert \
+  -ca=$TARGET_DIR/ca.pem \
+  -ca-key=$TARGET_DIR/ca-key.pem \
+  -config=tools/certs/ca-config.json \
+  -profile=client \
+  -cn="nobody" \
+  tools/certs/client-csr.json | cfssljson -bare $TARGET_DIR/nobody-client
+
+  cp tools/acl/model.conf $TARGET_DIR/acl-model.conf
+  cp tools/acl/policy.csv $TARGET_DIR/acl-policy.csv
