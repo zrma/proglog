@@ -10,35 +10,61 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
+	"github.com/zrma/proglog/internal/auth"
 	"github.com/zrma/proglog/internal/config"
 	"github.com/zrma/proglog/internal/log"
 	"github.com/zrma/proglog/internal/pb"
 )
 
 func TestGRPCServer_ProduceAndConsume(t *testing.T) {
-	f := newFixture(t)
+	t.Run("OK/RootClient", func(t *testing.T) {
+		f := newFixture(t, config.RootClientCertFile, config.RootClientKeyFile)
 
-	ctx := context.Background()
+		ctx := context.Background()
 
-	want := &pb.Record{
-		Value: []byte("hello world"),
-	}
+		want := &pb.Record{
+			Value: []byte("hello world"),
+		}
 
-	produce, err := f.client.Produce(ctx, &pb.ProduceRequest{Record: want})
-	require.NoError(t, err)
+		produce, err := f.client.Produce(ctx, &pb.ProduceRequest{Record: want})
+		require.NoError(t, err)
 
-	consume, err := f.client.Consume(ctx, &pb.ConsumeRequest{Offset: produce.GetOffset()})
-	require.NoError(t, err)
+		consume, err := f.client.Consume(ctx, &pb.ConsumeRequest{Offset: produce.GetOffset()})
+		require.NoError(t, err)
 
-	require.Equal(t, want.GetValue(), consume.GetRecord().GetValue())
-	require.Equal(t, produce.GetOffset(), consume.GetRecord().GetOffset())
+		require.Equal(t, want.GetValue(), consume.GetRecord().GetValue())
+		require.Equal(t, produce.GetOffset(), consume.GetRecord().GetOffset())
+	})
+
+	t.Run("Err/NobodyClient", func(t *testing.T) {
+		f := newFixture(t, config.NobodyClientCertFile, config.NobodyClientKeyFile)
+
+		ctx := context.Background()
+
+		produce, err := f.client.Produce(ctx, &pb.ProduceRequest{Record: &pb.Record{Value: []byte("hello world")}})
+		require.Error(t, err)
+		require.Nil(t, produce)
+
+		gotCode := status.Code(err)
+		wantCode := codes.PermissionDenied
+		require.Equal(t, wantCode, gotCode)
+
+		consume, err := f.client.Consume(ctx, &pb.ConsumeRequest{Offset: 0})
+		require.Error(t, err)
+		require.Nil(t, consume)
+
+		gotCode = status.Code(err)
+		wantCode = codes.PermissionDenied
+		require.Equal(t, wantCode, gotCode)
+	})
 }
 
 func TestGRPCServer_ConsumePastBoundary(t *testing.T) {
-	f := newFixture(t)
+	f := newFixture(t, config.RootClientCertFile, config.RootClientKeyFile)
 
 	ctx := context.Background()
 
@@ -55,46 +81,86 @@ func TestGRPCServer_ConsumePastBoundary(t *testing.T) {
 }
 
 func TestGrpcServer_Stream_ProduceAndConsume(t *testing.T) {
-	f := newFixture(t)
+	t.Run("OK/RootClient", func(t *testing.T) {
+		f := newFixture(t, config.RootClientCertFile, config.RootClientKeyFile)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+		defer cancel()
 
-	records := []*pb.Record{
-		{Value: []byte("first message"), Offset: 0},
-		{Value: []byte("second message"), Offset: 1},
-	}
+		records := []*pb.Record{
+			{Value: []byte("first message"), Offset: 0},
+			{Value: []byte("second message"), Offset: 1},
+		}
 
-	{
-		stream, err := f.client.ProduceStream(ctx)
-		require.NoError(t, err)
+		{
+			stream, err := f.client.ProduceStream(ctx)
+			require.NoError(t, err)
 
-		for offset, record := range records {
-			err := stream.Send(&pb.ProduceRequest{Record: record})
+			for offset, record := range records {
+				err := stream.Send(&pb.ProduceRequest{Record: record})
+				require.NoError(t, err)
+
+				resp, err := stream.Recv()
+				require.NoError(t, err)
+				require.Equal(t, uint64(offset), resp.GetOffset())
+			}
+		}
+
+		{
+			stream, err := f.client.ConsumeStream(ctx, &pb.ConsumeRequest{Offset: 0})
+			require.NoError(t, err)
+
+			for offset, record := range records {
+				resp, err := stream.Recv()
+				require.NoError(t, err)
+
+				got := resp.GetRecord()
+				require.Equal(t, &pb.Record{
+					Value:  record.GetValue(),
+					Offset: record.GetOffset(),
+				}, got)
+				require.Equal(t, uint64(offset), got.GetOffset())
+			}
+		}
+	})
+
+	t.Run("Err/NobodyClient", func(t *testing.T) {
+		f := newFixture(t, config.NobodyClientCertFile, config.NobodyClientKeyFile)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+		defer cancel()
+
+		{
+			stream, err := f.client.ProduceStream(ctx)
+			require.NoError(t, err)
+
+			record := &pb.Record{Value: []byte("first message"), Offset: 0}
+
+			err = stream.Send(&pb.ProduceRequest{Record: record})
 			require.NoError(t, err)
 
 			resp, err := stream.Recv()
-			require.NoError(t, err)
-			require.Equal(t, uint64(offset), resp.GetOffset())
+			require.Error(t, err)
+			require.Nil(t, resp)
+
+			gotCode := status.Code(err)
+			wantCode := codes.PermissionDenied
+			require.Equal(t, wantCode, gotCode)
 		}
-	}
 
-	{
-		stream, err := f.client.ConsumeStream(ctx, &pb.ConsumeRequest{Offset: 0})
-		require.NoError(t, err)
+		{
+			stream, err := f.client.ConsumeStream(ctx, &pb.ConsumeRequest{Offset: 0})
+			require.NoError(t, err)
 
-		for offset, record := range records {
 			resp, err := stream.Recv()
-			require.NoError(t, err)
+			require.Error(t, err)
+			require.Nil(t, resp)
 
-			got := resp.GetRecord()
-			require.Equal(t, &pb.Record{
-				Value:  record.GetValue(),
-				Offset: record.GetOffset(),
-			}, got)
-			require.Equal(t, uint64(offset), got.GetOffset())
+			gotCode := status.Code(err)
+			wantCode := codes.PermissionDenied
+			require.Equal(t, wantCode, gotCode)
 		}
-	}
+	})
 }
 
 type fixture struct {
@@ -102,23 +168,10 @@ type fixture struct {
 	cfg    *Config
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T, cliCert, cliKey string) *fixture {
 	t.Helper()
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-
-	clientTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
-		CertFile: config.ClientCertFile,
-		KeyFile:  config.ClientKeyFile,
-		CAFile:   config.CAFile,
-	})
-	require.NoError(t, err)
-
-	clientOpts := []grpc.DialOption{
-		grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
-	}
-	clientConn, err := grpc.NewClient(l.Addr().String(), clientOpts...)
 	require.NoError(t, err)
 
 	dir, err := os.MkdirTemp(os.TempDir(), "server-test")
@@ -127,7 +180,13 @@ func newFixture(t *testing.T) *fixture {
 	diskLog, err := log.NewLog(dir, log.Config{})
 	require.NoError(t, err)
 
-	cfg := &Config{CommitLog: diskLog}
+	authorizer, err := auth.New(config.ACLModelFile, config.ACLPolicyFile)
+	require.NoError(t, err)
+
+	cfg := &Config{
+		CommitLog:  diskLog,
+		Authorizer: authorizer,
+	}
 
 	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
@@ -148,20 +207,43 @@ func newFixture(t *testing.T) *fixture {
 		require.NoError(t, svr.Serve(l))
 	}()
 
-	client := pb.NewLogClient(clientConn)
-
 	t.Cleanup(func() {
 		svr.GracefulStop()
 		err := l.Close()
 		require.Error(t, err)
 		require.True(t, errors.Is(err, net.ErrClosed), "because svr.GracefulStop closed the listener")
 
-		require.NoError(t, clientConn.Close())
 		require.NoError(t, diskLog.Remove())
 	})
 
 	return &fixture{
-		client: client,
+		client: newClient(t, l.Addr().String(), cliCert, cliKey),
 		cfg:    cfg,
 	}
+}
+
+func newClient(
+	t *testing.T,
+	addr string,
+	certFile string,
+	keyFile string,
+) pb.LogClient {
+	clientTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
+		CertFile: certFile,
+		KeyFile:  keyFile,
+		CAFile:   config.CAFile,
+	})
+	require.NoError(t, err)
+
+	clientOpts := []grpc.DialOption{
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+	}
+	clientConn, err := grpc.NewClient(addr, clientOpts...)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		require.NoError(t, clientConn.Close())
+	})
+
+	return pb.NewLogClient(clientConn)
 }
