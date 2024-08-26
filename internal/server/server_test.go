@@ -3,12 +3,15 @@ package server
 import (
 	"context"
 	"errors"
+	"flag"
 	"net"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opencensus.io/examples/exporter"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -19,6 +22,20 @@ import (
 	"github.com/zrma/proglog/internal/log"
 	"github.com/zrma/proglog/internal/pb"
 )
+
+var debug = flag.Bool("debug", false, "Enable observability for debugging.")
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	if *debug {
+		logger, err := zap.NewDevelopment()
+		if err != nil {
+			panic(err)
+		}
+		zap.ReplaceGlobals(logger)
+	}
+	os.Exit(m.Run())
+}
 
 func TestGRPCServer_ProduceAndConsume(t *testing.T) {
 	t.Run("OK/RootClient", func(t *testing.T) {
@@ -171,6 +188,8 @@ type fixture struct {
 func newFixture(t *testing.T, cliCert, cliKey string) *fixture {
 	t.Helper()
 
+	flushTelemetry := startTelemetryExporter(t)
+
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
@@ -214,11 +233,41 @@ func newFixture(t *testing.T, cliCert, cliKey string) *fixture {
 		require.True(t, errors.Is(err, net.ErrClosed), "because svr.GracefulStop closed the listener")
 
 		require.NoError(t, diskLog.Remove())
+		flushTelemetry()
 	})
 
 	return &fixture{
 		client: newClient(t, l.Addr().String(), cliCert, cliKey),
 		cfg:    cfg,
+	}
+}
+
+func startTelemetryExporter(t *testing.T) func() {
+	if !*debug {
+		return func() {}
+	}
+
+	metricsLogFile, err := os.CreateTemp(os.TempDir(), "metrics-*.log")
+	require.NoError(t, err)
+	t.Logf("metrics log file: %s", metricsLogFile.Name())
+
+	tracesLogFile, err := os.CreateTemp(os.TempDir(), "traces-*.log")
+	require.NoError(t, err)
+	t.Logf("traces log file: %s", tracesLogFile.Name())
+
+	telemetryExporter, err := exporter.NewLogExporter(exporter.Options{
+		MetricsLogFile:    metricsLogFile.Name(),
+		TracesLogFile:     tracesLogFile.Name(),
+		ReportingInterval: time.Second,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, telemetryExporter.Start())
+
+	return func() {
+		time.Sleep(1_500 * time.Millisecond)
+		telemetryExporter.Stop()
+		telemetryExporter.Close()
 	}
 }
 
