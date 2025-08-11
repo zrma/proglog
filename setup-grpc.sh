@@ -43,6 +43,6 @@ else
 fi
 
 go install \
-    'google.golang.org/grpc/cmd/protoc-gen-go-grpc' \
-    'google.golang.org/protobuf/cmd/protoc-gen-go' \
-    'github.com/bufbuild/buf/cmd/buf'
+    'google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1' \
+    'google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11' \
+    'github.com/bufbuild/buf/cmd/buf@v1.69.0'
